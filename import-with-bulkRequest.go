@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kintone/go-kintone"
+	"github.com/kintone-labs/go-kintone"
 	"golang.org/x/text/transform"
 )
 
@@ -23,11 +23,13 @@ type SubRecord struct {
 }
 
 func getReader(reader io.Reader) io.Reader {
+	readerWithoutBOM := removeBOMCharacter(reader)
+
 	encoding := getEncoding()
 	if encoding == nil {
-		return reader
+		return readerWithoutBOM
 	}
-	return transform.NewReader(reader, encoding.NewDecoder())
+	return transform.NewReader(readerWithoutBOM, encoding.NewDecoder())
 }
 
 // delete specific records
@@ -301,13 +303,17 @@ func setRecordUpdatable(record map[string]interface{}, columns Columns) {
 	}
 }
 func uploadFiles(app *kintone.App, value string) (kintone.FileField, error) {
-	value = strings.TrimSpace(value)
-	if config.FileDir == "" || value == "" {
+	if config.FileDir == "" {
 		return nil, nil
 	}
 
-	files := strings.Split(value, "\n")
 	var ret kintone.FileField = []kintone.File{}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ret, nil
+	}
+
+	files := strings.Split(value, "\n")
 	for _, file := range files {
 		path := fmt.Sprintf("%s%c%s", config.FileDir, os.PathSeparator, file)
 		fileKey, err := uploadFile(app, path)
